@@ -17,6 +17,8 @@
 * [クイックスタート](#クイックスタート)
 * [フォーム操作例](#フォーム操作例)
 * [リンク例](#リンク例)
+* [Table / List の確認例](#table--list-の確認例)
+* [連続した操作](#連続した操作)
 * [Cookie の扱い](#cookie-の扱い)
 * [Selector について](#selector-について)
 * [Transport について](#transport-について)
@@ -96,7 +98,7 @@ func Test_LoginFlow(t *testing.T) {
         t.Fatal(err)
     }
 
-    form.Fill("username", "alice").Fill("password", "secret")
+    form.MustFill("username", "alice").MustFill("password", "secret")
 
     res, err := form.Submit()
     if err != nil {
@@ -111,15 +113,52 @@ func Test_LoginFlow(t *testing.T) {
 
 ## フォーム操作例
 
+### エラーハンドリング版
+
 ```go
 form, err := dom.Form("@login")
 if err != nil {
     return err
 }
 
-form.Fill("username", "tester").
-    Fill("password", "mypassword").
-    Check("remember_me")
+form, err = form.Fill("username", "tester")
+if err != nil {
+    return err
+}
+
+form, err = form.Fill("password", "mypassword")
+if err != nil {
+    return err
+}
+
+form, err = form.CheckCheckbox("remember_me")
+if err != nil {
+    return err
+}
+
+res, err := form.Submit()
+if err != nil {
+    return err
+}
+
+if res.Status != 200 {
+    return fmt.Errorf("expected status 200, got %d", res.Status)
+}
+```
+
+### メソッドチェーン版（Must系）
+
+テスト時など、エラーが発生したら即座に失敗させたい場合は `Must` プレフィックス付きメソッドを使用できます。エラー時はパニックします。
+
+```go
+form, err := dom.Form("@login")
+if err != nil {
+    return err
+}
+
+form.MustFill("username", "tester").
+    MustFill("password", "mypassword").
+    MustCheckCheckbox("remember_me")
 
 res, err := form.Submit()
 if err != nil {
@@ -166,8 +205,123 @@ if res.Status != 200 {
 ```
 
 
-## Cookie の扱い
+## Table / List の確認例
 
+### テーブル
+
+```go
+table, err := dom.Table("@user-list")
+if err != nil {
+    return err
+}
+
+rows, err := table.GetRows()
+if err != nil {
+    return err
+}
+
+// 行数の確認
+if table.GetRowCount() != 3 {
+    return fmt.Errorf("expected 3 rows, got %d", table.GetRowCount())
+}
+
+// セルの内容確認
+if rows[0][0] != "Alice" {
+    return fmt.Errorf("expected 'Alice', got '%s'", rows[0][0])
+}
+
+// 空テーブルの確認
+if table.GetRowCount() == 0 {
+    return fmt.Errorf("expected data, but table is empty")
+}
+```
+
+### リスト
+
+```go
+list, err := dom.List("@todo-items")
+if err != nil {
+    return err
+}
+
+items, err := list.GetItems()
+if err != nil {
+    return err
+}
+
+// アイテム数の確認
+if list.GetItemCount() != 5 {
+    return fmt.Errorf("expected 5 items, got %d", list.GetItemCount())
+}
+
+// 内容の確認
+if items[0] != "Buy groceries" {
+    return fmt.Errorf("expected 'Buy groceries', got '%s'", items[0])
+}
+```
+
+**注意**: 複雑な期待値比較や差分表示については、現在はロードマップで計画中です。
+
+## 連続した操作
+
+`Submit()` や `Click()` が返す `Response` には HTML 本文が含まれているため、再度 `Parse()` することで次の操作へと繋げられます。
+
+```go
+// Transport を一度作成（Cookie はこの Transport インスタンスが管理）
+transport := NewMockTransport()
+
+// ログインページ
+dom := h.New(transport).Parse(loginPageHTML)
+
+form, err := dom.Form("#login-form")
+if err != nil {
+    return err
+}
+
+form.MustFill("username", "alice").MustFill("password", "secret")
+
+res, err := form.Submit()
+if err != nil {
+    return err
+}
+
+// ログイン後のページをパース（同じ transport を使用）
+dashboardDOM := h.New(transport).Parse(res.Body)
+
+// プロフィール編集リンクをクリック
+link, err := dashboardDOM.Link("@edit-profile")
+if err != nil {
+    return err
+}
+
+res, err = link.Click()
+if err != nil {
+    return err
+}
+
+// プロフィール編集ページをパース（同じ transport を使用）
+editDOM := h.New(transport).Parse(res.Body)
+
+form, err = editDOM.Form("#profile-form")
+if err != nil {
+    return err
+}
+
+form.MustFill("bio", "Updated bio text")
+
+res, err = form.Submit()
+if err != nil {
+    return err
+}
+
+if res.Status != 200 {
+    return fmt.Errorf("expected status 200, got %d", res.Status)
+}
+```
+
+**重要**: 同じ `Transport` インスタンスを使用することで、Cookie が自動的に引き継がれ、セッション管理が透過的に動作します。
+
+## Cookie の扱い
 
 `htmldriver`はResponseに含まれるCookieを自動的に保存し、以降のフォーム送信やリンククリック時に適切に送信します。これにより、セッション管理やユーザー認証のシナリオを簡単にテストできます。
 
@@ -183,7 +337,7 @@ if err != nil {
     return err
 }
 
-form.Fill("data", "value")
+form.MustFill("data", "value")
 
 res, err := form.Submit()
 if err != nil {
@@ -194,6 +348,8 @@ if res.Status != 200 {
     return fmt.Errorf("expected status 200, got %d", res.Status)
 }
 ```
+
+**注意**: Cookie の有効期限、パス、ドメインなどの詳細な属性については、現在はロードマップで計画中です。
 
 ## Selector について
 
@@ -238,6 +394,73 @@ type Transport interface {
 }
 ```
 
+### 実装例：標準 http.Client を使う場合
+
+```go
+type HTTPClientTransport struct {
+    client  *http.Client
+    baseURL string
+}
+
+func NewHTTPClientTransport(baseURL string) *HTTPClientTransport {
+    return &HTTPClientTransport{
+        client:  &http.Client{},
+        baseURL: baseURL,
+    }
+}
+
+func (t *HTTPClientTransport) Do(req h.Request) (h.Response, error) {
+    // 相対URLを絶対URLに変換
+    fullURL := t.baseURL + req.URL.String()
+
+    var httpReq *http.Request
+    var err error
+
+    if req.Method == http.MethodPost {
+        httpReq, err = http.NewRequest(req.Method, fullURL, strings.NewReader(req.Form.Encode()))
+        if err != nil {
+            return h.Response{}, err
+        }
+        httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+    } else {
+        httpReq, err = http.NewRequest(req.Method, fullURL, nil)
+        if err != nil {
+            return h.Response{}, err
+        }
+    }
+
+    // ヘッダーをコピー
+    for k, v := range req.Header {
+        httpReq.Header[k] = v
+    }
+
+    resp, err := t.client.Do(httpReq)
+    if err != nil {
+        return h.Response{}, err
+    }
+    defer resp.Body.Close()
+
+    body, err := io.ReadAll(resp.Body)
+    if err != nil {
+        return h.Response{}, err
+    }
+
+    return h.Response{
+        Status: resp.StatusCode,
+        Body:   string(body),
+        Header: resp.Header,
+        URL:    resp.Request.URL,
+    }, nil
+}
+```
+
+### Base URL の扱い
+
+フォームの `action` や `<a>` の `href` が相対パスの場合、Transport 側で Base URL を管理します。
+
+- **デフォルト**: `http://localhost` を使用
+- **カスタマイズ**: Transport 実装時に `baseURL` を指定可能
+
 ## API 概要
 
 ```go
@@ -257,15 +480,24 @@ func (d *DOM) Title() (string, error)
 func (d *DOM) Meta(name string) (string, error)
 func (d *DOM) Img(selector string) (*Img, error)
 
-// フォーム操作
-func (f *Form) Fill(name, value string) *Form           // テキスト入力
-func (f *Form) Check(name string) *Form                 // チェックボックス/ラジオを選択
-func (f *Form) Uncheck(name string) *Form               // チェックボックスの選択解除
-func (f *Form) Select(name, value string) *Form         // セレクトボックス選択
-func (f *Form) Choose(name, value string) *Form         // ラジオボタン選択
-func (f *Form) Submit() (Response, error)               // 送信
-func (f *Form) GetValue(name string) (string, error)    // 入力値取得
-func (f *Form) HasField(name string) bool               // フィールド存在確認
+// フォーム操作（エラーを返す版）
+func (f *Form) Fill(name, value string) (*Form, error)           // テキスト入力
+func (f *Form) CheckCheckbox(name string) (*Form, error)         // チェックボックスを選択
+func (f *Form) UncheckCheckbox(name string) (*Form, error)       // チェックボックスの選択解除
+func (f *Form) Select(name, value string) (*Form, error)         // セレクトボックス選択
+func (f *Form) CheckRadio(name, value string) (*Form, error)     // ラジオボタン選択
+func (f *Form) Submit() (Response, error)                        // 送信
+
+// フォーム操作（メソッドチェーン版 - エラー時はパニック）
+func (f *Form) MustFill(name, value string) *Form                // テキスト入力
+func (f *Form) MustCheckCheckbox(name string) *Form              // チェックボックスを選択
+func (f *Form) MustUncheckCheckbox(name string) *Form            // チェックボックスの選択解除
+func (f *Form) MustSelect(name, value string) *Form              // セレクトボックス選択
+func (f *Form) MustCheckRadio(name, value string) *Form          // ラジオボタン選択
+
+// フォーム情報取得
+func (f *Form) GetValue(name string) (string, error)             // 入力値取得
+func (f *Form) HasField(name string) bool                        // フィールド存在確認
 
 
 // リンク
@@ -302,13 +534,13 @@ Chi フレームワークを使用している場合`ChiTransport`を利用し�
 import (
     "github.com/go-chi/chi/v5"
     h "github.com/ppdx999/htmldriver"
-    "github.com/ppdx999/htmldriver/integrations/chi_transport"
+    "github.com/ppdx999/htmldriver/integrations/chitransport"
 )
 
 func Test_LoginFlow(t *testing.T) {
     r := chi.NewRouter()
 
-    transport := chi_transport.NewChiTransport(r)
+    transport := chitransport.NewChiTransport(r)
 
     dom := h.New(transport).Parse(renderLoginPage())
 
@@ -317,8 +549,8 @@ func Test_LoginFlow(t *testing.T) {
         t.Fatal(err)
     }
 
-    form.Fill("username", "alice").
-        Fill("password", "secret")
+    form.MustFill("username", "alice").
+        MustFill("password", "secret")
 
     res, err := form.Submit()
     if err != nil {
@@ -349,6 +581,7 @@ func Test_LoginFlow(t *testing.T) {
 * [ ] `multipart/form-data` とファイル添付
 * [ ] `<select multiple>` / `<input type=date|time|number>` の入力補助
 * [ ] リダイレクト追従（`3xx`）のサポート
+* [ ] Cookie の詳細属性サポート（有効期限、パス、ドメイン、Secure、HttpOnly等）
 * [ ] `Table`/`List` の差分レポート強化（どのセルが不一致かを詳細表示）
 * [ ] リッチなセレクタ拡張（クラス、タグ、属性セレクタ、`:has()`, `:nth-of-type()` など）
 * [ ] エラーメッセージの見やすい差分表示（カラー出力）
