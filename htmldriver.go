@@ -23,10 +23,10 @@ type FormFile struct {
 
 // Response represents an HTTP response received from Transport
 type Response struct {
-	Status int
-	Body   string
 	Header http.Header
 	URL    *url.URL
+	Body   string
+	Status int
 }
 
 // Transport is an interface that abstracts HTTP communication
