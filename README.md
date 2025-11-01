@@ -1,5 +1,11 @@
 # htmldriver
 
+[![Test](https://github.com/ppdx999/htmldriver/actions/workflows/test.yml/badge.svg)](https://github.com/ppdx999/htmldriver/actions/workflows/test.yml)
+[![Lint](https://github.com/ppdx999/htmldriver/actions/workflows/lint.yml/badge.svg)](https://github.com/ppdx999/htmldriver/actions/workflows/lint.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ppdx999/htmldriver)](https://goreportcard.com/report/github.com/ppdx999/htmldriver)
+[![codecov](https://codecov.io/gh/ppdx999/htmldriver/branch/main/graph/badge.svg)](https://codecov.io/gh/ppdx999/htmldriver)
+[![GoDoc](https://godoc.org/github.com/ppdx999/htmldriver?status.svg)](https://godoc.org/github.com/ppdx999/htmldriver)
+
 **純粋なHTMLに対して "人間の操作" を自動テストするための Go 向け補助ライブラリ**。
 
 * 既存のHTML文字列（SSRの出力、テンプレート、ファイル、スナップショット）を読み込み
