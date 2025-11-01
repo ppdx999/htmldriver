@@ -266,12 +266,19 @@ if items[0] != "Buy groceries" {
 
 `Submit()` や `Click()` が返す `Response` には HTML 本文が含まれているため、再度 `Parse()` することで次の操作へと繋げられます。
 
+### 方法1: CookieJar を共有する（推奨）
+
+Cookie を複数のページ操作で共有したい場合は、`CookieJar` を明示的に作成して共有します。
+
 ```go
-// Transport を一度作成（Cookie はこの Transport インスタンスが管理）
+// Transport を作成
 transport := NewMockTransport()
 
+// Cookie を共有するための CookieJar を作成
+jar := h.NewCookieJar()
+
 // ログインページ
-dom := h.New(transport).Parse(loginPageHTML)
+dom := h.NewWithCookieJar(transport, jar).Parse(loginPageHTML)
 
 form, err := dom.Form("#login-form")
 if err != nil {
@@ -285,8 +292,8 @@ if err != nil {
     return err
 }
 
-// ログイン後のページをパース（同じ transport を使用）
-dashboardDOM := h.New(transport).Parse(res.Body)
+// ログイン後のページをパース（同じ jar を使用）
+dashboardDOM := h.NewWithCookieJar(transport, jar).Parse(res.Body)
 
 // プロフィール編集リンクをクリック
 link, err := dashboardDOM.Link("@edit-profile")
@@ -299,8 +306,8 @@ if err != nil {
     return err
 }
 
-// プロフィール編集ページをパース（同じ transport を使用）
-editDOM := h.New(transport).Parse(res.Body)
+// プロフィール編集ページをパース（同じ jar を使用）
+editDOM := h.NewWithCookieJar(transport, jar).Parse(res.Body)
 
 form, err = editDOM.Form("#profile-form")
 if err != nil {
@@ -319,7 +326,28 @@ if res.Status != 200 {
 }
 ```
 
-**重要**: 同じ `Transport` インスタンスを使用することで、Cookie が自動的に引き継がれ、セッション管理が透過的に動作します。
+### 方法2: 同じ DOM インスタンスを使い続ける
+
+Cookie を自動的に引き継ぎたい場合は、同じ DOM インスタンスで `Parse()` を繰り返すこともできます。
+
+```go
+transport := NewMockTransport()
+
+// 最初のページ
+dom := h.New(transport).Parse(loginPageHTML)
+
+// ログイン
+form, _ := dom.Form("#login-form")
+form.MustFill("username", "alice").MustFill("password", "secret")
+res, _ := form.Submit()
+
+// 同じ DOM で次のページをパース（Cookie は自動的に引き継がれる）
+dom = dom.Parse(res.Body)
+
+// 以降も同様に dom を使い続ける
+```
+
+**重要**: `New()` で新しい DOM を作成すると Cookie は引き継がれません。`NewWithCookieJar()` で `CookieJar` を共有するか、同じ DOM インスタンスを使い続けてください。
 
 ## Cookie の扱い
 
@@ -466,8 +494,11 @@ func (t *HTTPClientTransport) Do(req h.Request) (h.Response, error) {
 ```go
 // ルート
 func New(transport Transport) *DOM
+func NewWithCookieJar(transport Transport, jar *CookieJar) *DOM
+func NewCookieJar() *CookieJar
 func (d *DOM) Parse(html string) *DOM
 func (d *DOM) SetCookie(name, value string) *DOM
+func (d *DOM) GetCookieJar() *CookieJar
 
 // 要素取得
 func (d *DOM) Form(selector string) (*Form, error)
