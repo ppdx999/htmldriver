@@ -6,67 +6,74 @@
 [![codecov](https://codecov.io/gh/ppdx999/htmldriver/branch/main/graph/badge.svg)](https://codecov.io/gh/ppdx999/htmldriver)
 [![GoDoc](https://godoc.org/github.com/ppdx999/htmldriver?status.svg)](https://godoc.org/github.com/ppdx999/htmldriver)
 
-**純粋なHTMLに対して "人間の操作" を自動テストするための Go 向け補助ライブラリ**。
+**A lightweight Go library for automated testing of pure HTML with human-like interactions.**
 
-* 既存のHTML文字列（SSRの出力、テンプレート、ファイル、スナップショット）を読み込み
-* フォームの入力/送信、リンク/ボタンのクリックをエミュレート
-* 見出し/リスト/テーブル/任意テキストの存在確認
-* **JavaScriptは実行しません**（純HTML + Web標準仕様に基づく動作に限定）
+* Load existing HTML strings (SSR output, templates, files, snapshots)
+* Emulate form input/submission, link/button clicks
+* Verify headings, lists, tables, and arbitrary text
+* **No JavaScript execution** (limited to pure HTML + Web standards)
+
+[日本語ドキュメント (Japanese)](./README.ja.md)
 
 ---
 
-## 目次
+## Table of Contents
 
 * [Why htmldriver?](#why-htmldriver)
-* [特徴](#特徴)
-* [制限事項](#制限事項)
-* [クイックスタート](#クイックスタート)
-* [フォーム操作例](#フォーム操作例)
-* [リンク例](#リンク例)
-* [Table / List の確認例](#table--list-の確認例)
-* [連続した操作](#連続した操作)
-* [Cookie の扱い](#cookie-の扱い)
-* [Selector について](#selector-について)
-* [Transport について](#transport-について)
-* [API 概要](#api-概要)
-* [フレームワーク統合](#フレームワーク統合)
-* [ロードマップ](#ロードマップ)
+* [Features](#features)
+* [Limitations](#limitations)
+* [Installation](#installation)
+* [Quick Start](#quick-start)
+* [Form Operations](#form-operations)
+* [Link Operations](#link-operations)
+* [Table / List Verification](#table--list-verification)
+* [Continuous Operations](#continuous-operations)
+* [Cookie Management](#cookie-management)
+* [Selectors](#selectors)
+* [Transport](#transport)
+* [API Overview](#api-overview)
+* [Framework Integrations](#framework-integrations)
+* [Roadmap](#roadmap)
 
 ---
 
 ## Why htmldriver?
 
-GoでSSRアプリケーションやHTMLテンプレートのテストを書く際、既存のツールには以下の課題があります：
+When testing SSR applications or HTML templates in Go, existing tools have limitations:
 
-* **goquery**: DOMパースに特化しており、フォーム送信やHTTPリクエストの機能がない
-* **net/http/httptest**: モックサーバーの構築は可能だが、フォーム操作のAPIが直感的でない
-* **playwright-go / chromedp**: ヘッドレスブラウザは重く、起動が遅く、JavaScript実行が不要なケースでもオーバースペック
+* **goquery**: Specialized for DOM parsing, lacks form submission and HTTP request capabilities
+* **net/http/httptest**: Can build mock servers, but form operation APIs aren't intuitive
+* **playwright-go / chromedp**: Headless browsers are heavy, slow to start, and overkill when JavaScript execution is unnecessary
 
-`htmldriver` は以下の特徴により、SSR/テンプレートテストに最適化されています：
+`htmldriver` is optimized for SSR/template testing with these characteristics:
 
-* **軽量**: HTMLパースとHTTPリクエストのみ（ブラウザ不要）
-* **直感的API**: `Fill()`, `Submit()`, `Click()` など、人間の操作に近い表現
-* **Transport抽象化**: 任意のHTTPクライアント/フレームワークと統合可能
-* **テストフレームワーク非依存**: `testing` パッケージへの依存なし
+* **Lightweight**: Only HTML parsing and HTTP requests (no browser required)
+* **Intuitive API**: Human-like expressions such as `Fill()`, `Submit()`, `Click()`
+* **Transport abstraction**: Integrates with any HTTP client/framework
+* **Test framework agnostic**: No dependency on the `testing` package
 
-## 特徴
+## Features
 
-* **シンプルなAPI**: フォーム入力やリンククリックを直感的に操作可能
-* **Transport抽象化**: 任意のHTTPクライアント/サーバーと連携可能
-* **Cookie自動管理**: セッション維持や認証シナリオをサポート
-* **軽量**: 依存関係が少なく、セットアップが簡単
+* **Simple API**: Intuitive operations for form input and link clicks
+* **Transport abstraction**: Works with any HTTP client/server
+* **Automatic cookie management**: Supports session maintenance and authentication scenarios
+* **Lightweight**: Few dependencies, easy setup
 
-## 制限事項
+## Limitations
 
-* **JavaScript非対応**: 純粋なHTML + Web標準仕様に基づく動作に限定
-* **CSS/レイアウト未評価**: 見た目の崩れ検出は不可（文字列/DOM構造に限定）
-* **ブラウザ差異非再現**: ブラウザ実機に依存する挙動は対象外
+* **No JavaScript support**: Limited to pure HTML + Web standard behavior
+* **No CSS/layout evaluation**: Cannot detect visual breakage (text/DOM structure only)
+* **No browser-specific behavior**: Does not reproduce browser implementation differences
 
-もしJavaScript実行が必要な場合は、`playwright-go`や`chromedp`などのヘッドレスブラウザ操作ライブラリを検討してください。
+If you need JavaScript execution, consider headless browser libraries like `playwright-go` or `chromedp`.
 
+## Installation
 
+```bash
+go get github.com/ppdx999/htmldriver
+```
 
-## クイックスタート
+## Quick Start
 
 ```go
 package login_test
@@ -81,7 +88,7 @@ import (
 type MockTransport struct{}
 
 func (m MockTransport) Do(req h.Request) (h.Response, error) {
-    // 送信されたフォーム/URLに応じて任意のレスポンスを返す
+    // Return arbitrary response based on submitted form/URL
     if req.Method == http.MethodPost && req.URL.Path == "/login" {
         user := req.Form.Get("username")
         return h.Response{Status: 200, Body: "<p>Welcome, " + user + "</p>"}, nil
@@ -117,9 +124,9 @@ func Test_LoginFlow(t *testing.T) {
 }
 ```
 
-## フォーム操作例
+## Form Operations
 
-### エラーハンドリング版
+### Error Handling Version
 
 ```go
 form, err := dom.Form("@login")
@@ -152,9 +159,9 @@ if res.Status != 200 {
 }
 ```
 
-### メソッドチェーン版（Must系）
+### Method Chaining Version (Must*)
 
-テスト時など、エラーが発生したら即座に失敗させたい場合は `Must` プレフィックス付きメソッドを使用できます。エラー時はパニックします。
+For tests where you want to fail immediately on error, use `Must` prefixed methods. These panic on error.
 
 ```go
 form, err := dom.Form("@login")
@@ -176,7 +183,7 @@ if res.Status != 200 {
 }
 ```
 
-## リンク例
+## Link Operations
 
 ```go
 link, err := dom.Link("@profile")
@@ -210,10 +217,9 @@ if res.Status != 200 {
 }
 ```
 
+## Table / List Verification
 
-## Table / List の確認例
-
-### テーブル
+### Table
 
 ```go
 table, err := dom.Table("@user-list")
@@ -226,23 +232,23 @@ if err != nil {
     return err
 }
 
-// 行数の確認
+// Verify row count
 if table.GetRowCount() != 3 {
     return fmt.Errorf("expected 3 rows, got %d", table.GetRowCount())
 }
 
-// セルの内容確認
+// Verify cell content
 if rows[0][0] != "Alice" {
     return fmt.Errorf("expected 'Alice', got '%s'", rows[0][0])
 }
 
-// 空テーブルの確認
+// Check for empty table
 if table.GetRowCount() == 0 {
     return fmt.Errorf("expected data, but table is empty")
 }
 ```
 
-### リスト
+### List
 
 ```go
 list, err := dom.List("@todo-items")
@@ -255,35 +261,35 @@ if err != nil {
     return err
 }
 
-// アイテム数の確認
+// Verify item count
 if list.GetItemCount() != 5 {
     return fmt.Errorf("expected 5 items, got %d", list.GetItemCount())
 }
 
-// 内容の確認
+// Verify content
 if items[0] != "Buy groceries" {
     return fmt.Errorf("expected 'Buy groceries', got '%s'", items[0])
 }
 ```
 
-**注意**: 複雑な期待値比較や差分表示については、現在はロードマップで計画中です。
+**Note**: Advanced comparison and diff display are planned in the roadmap.
 
-## 連続した操作
+## Continuous Operations
 
-`Submit()` や `Click()` が返す `Response` には HTML 本文が含まれているため、再度 `Parse()` することで次の操作へと繋げられます。
+`Submit()` and `Click()` return a `Response` containing HTML body, which can be parsed again for the next operation.
 
-### 方法1: CookieJar を共有する（推奨）
+### Method 1: Share CookieJar (Recommended)
 
-Cookie を複数のページ操作で共有したい場合は、`CookieJar` を明示的に作成して共有します。
+To share cookies across multiple page operations, explicitly create and share a `CookieJar`.
 
 ```go
-// Transport を作成
+// Create transport
 transport := NewMockTransport()
 
-// Cookie を共有するための CookieJar を作成
+// Create CookieJar for sharing cookies
 jar := h.NewCookieJar()
 
-// ログインページ
+// Login page
 dom := h.NewWithCookieJar(transport, jar).Parse(loginPageHTML)
 
 form, err := dom.Form("#login-form")
@@ -298,10 +304,10 @@ if err != nil {
     return err
 }
 
-// ログイン後のページをパース（同じ jar を使用）
+// Parse dashboard (use same jar)
 dashboardDOM := h.NewWithCookieJar(transport, jar).Parse(res.Body)
 
-// プロフィール編集リンクをクリック
+// Click edit profile link
 link, err := dashboardDOM.Link("@edit-profile")
 if err != nil {
     return err
@@ -312,7 +318,7 @@ if err != nil {
     return err
 }
 
-// プロフィール編集ページをパース（同じ jar を使用）
+// Parse edit page (use same jar)
 editDOM := h.NewWithCookieJar(transport, jar).Parse(res.Body)
 
 form, err = editDOM.Form("#profile-form")
@@ -332,40 +338,40 @@ if res.Status != 200 {
 }
 ```
 
-### 方法2: 同じ DOM インスタンスを使い続ける
+### Method 2: Reuse the Same DOM Instance
 
-Cookie を自動的に引き継ぎたい場合は、同じ DOM インスタンスで `Parse()` を繰り返すこともできます。
+To automatically carry cookies forward, you can also repeatedly call `Parse()` on the same DOM instance.
 
 ```go
 transport := NewMockTransport()
 
-// 最初のページ
+// First page
 dom := h.New(transport).Parse(loginPageHTML)
 
-// ログイン
+// Login
 form, _ := dom.Form("#login-form")
 form.MustFill("username", "alice").MustFill("password", "secret")
 res, _ := form.Submit()
 
-// 同じ DOM で次のページをパース（Cookie は自動的に引き継がれる）
+// Parse next page with same DOM (cookies are automatically carried)
 dom = dom.Parse(res.Body)
 
-// 以降も同様に dom を使い続ける
+// Continue using dom...
 ```
 
-**重要**: `New()` で新しい DOM を作成すると Cookie は引き継がれません。`NewWithCookieJar()` で `CookieJar` を共有するか、同じ DOM インスタンスを使い続けてください。
+**Important**: Creating a new DOM with `New()` does not carry cookies forward. Use `NewWithCookieJar()` to share a `CookieJar`, or keep using the same DOM instance.
 
-## Cookie の扱い
+## Cookie Management
 
-`htmldriver`はResponseに含まれるCookieを自動的に保存し、以降のフォーム送信やリンククリック時に適切に送信します。これにより、セッション管理やユーザー認証のシナリオを簡単にテストできます。
+`htmldriver` automatically saves cookies from responses and sends them with subsequent form submissions or link clicks. This makes it easy to test session management and user authentication scenarios.
 
-事前にCookieを設定したい場合は以下のようにします。
+To set cookies beforehand:
 
 ```go
 dom := h.New(transport).Parse(html)
 dom.SetCookie("session_id", "abc123")
 
-// 以降の操作で "session_id=abc123" が送信される
+// Subsequent operations will send "session_id=abc123"
 form, err := dom.Form("#protected-form")
 if err != nil {
     return err
@@ -383,44 +389,41 @@ if res.Status != 200 {
 }
 ```
 
-**注意**: Cookie の有効期限、パス、ドメインなどの詳細な属性については、現在はロードマップで計画中です。
+**Note**: Detailed cookie attributes (expiration, path, domain, Secure, HttpOnly, etc.) are planned in the roadmap.
 
-## Selector について
+## Selectors
 
-`selector` には以下の2種類のロケータ文字列を指定できます。
+The `selector` parameter accepts two types of locator strings:
 
-| セレクタ | 説明 |
-|----------|------|
-| `@xxxxx` | `test-id` 属性が `xxxxx` の要素を特定します。 |
-| `#xxxxx` | `id` 属性が `xxxxx` の要素を特定します。 |
+| Selector | Description |
+|----------|-------------|
+| `@xxxxx` | Matches elements with `test-id` attribute equal to `xxxxx` |
+| `#xxxxx` | Matches elements with `id` attribute equal to `xxxxx` |
 
-より高度なCSSセレクタのサポートは将来的にロードマップで検討しています。
+Support for more advanced CSS selectors is being considered in the roadmap.
 
+## Transport
 
-## Transport について
+`Transport` is an interface that abstracts I/O operations.
 
-`Transport` は I/O を抽象化するインタフェースです。
+`Form.Submit()` and `Link.Click()` internally call `Transport.Do()` to send HTTP requests and return the results to the caller.
 
-`Form.Submit()`や`Link.Click()`は内部で`Transport.Do()`を呼び出し、HTTPリクエストを送信します。
-そして、その結果を`Form.Submit()`や`Link.Click()`の呼び出し元に返します。
-
-この仕組みにより`htmldriver`は特定のHTTPクライアントやサーバーフレームワークに依存せず、任意の実装と連携可能です。
-
+This mechanism allows `htmldriver` to work with any HTTP client or server framework without being tied to a specific implementation.
 
 ```go
 type Request struct {
     Method string
     URL    *url.URL
     Header http.Header
-    Form   url.Values    // x-www-form-urlencoded 用
-    Files  []FormFile    // multipart 用
+    Form   url.Values    // for x-www-form-urlencoded
+    Files  []FormFile    // for multipart
 }
 
 type Response struct {
-    Status int
-    Body   string
     Header http.Header
     URL    *url.URL
+    Body   string
+    Status int
 }
 
 type Transport interface {
@@ -428,7 +431,7 @@ type Transport interface {
 }
 ```
 
-### 実装例：標準 http.Client を使う場合
+### Example: Using Standard http.Client
 
 ```go
 type HTTPClientTransport struct {
@@ -444,7 +447,7 @@ func NewHTTPClientTransport(baseURL string) *HTTPClientTransport {
 }
 
 func (t *HTTPClientTransport) Do(req h.Request) (h.Response, error) {
-    // 相対URLを絶対URLに変換
+    // Convert relative URL to absolute URL
     fullURL := t.baseURL + req.URL.String()
 
     var httpReq *http.Request
@@ -463,7 +466,7 @@ func (t *HTTPClientTransport) Do(req h.Request) (h.Response, error) {
         }
     }
 
-    // ヘッダーをコピー
+    // Copy headers
     for k, v := range req.Header {
         httpReq.Header[k] = v
     }
@@ -480,25 +483,25 @@ func (t *HTTPClientTransport) Do(req h.Request) (h.Response, error) {
     }
 
     return h.Response{
-        Status: resp.StatusCode,
-        Body:   string(body),
         Header: resp.Header,
         URL:    resp.Request.URL,
+        Body:   string(body),
+        Status: resp.StatusCode,
     }, nil
 }
 ```
 
-### Base URL の扱い
+### Base URL Handling
 
-フォームの `action` や `<a>` の `href` が相対パスの場合、Transport 側で Base URL を管理します。
+When form `action` or `<a>` `href` are relative paths, the Transport manages the base URL.
 
-- **デフォルト**: `http://localhost` を使用
-- **カスタマイズ**: Transport 実装時に `baseURL` を指定可能
+- **Default**: Uses `http://localhost`
+- **Customization**: Specify `baseURL` when implementing Transport
 
-## API 概要
+## API Overview
 
 ```go
-// ルート
+// Root
 func New(transport Transport) *DOM
 func NewWithCookieJar(transport Transport, jar *CookieJar) *DOM
 func NewCookieJar() *CookieJar
@@ -506,7 +509,7 @@ func (d *DOM) Parse(html string) *DOM
 func (d *DOM) SetCookie(name, value string) *DOM
 func (d *DOM) GetCookieJar() *CookieJar
 
-// 要素取得
+// Element Retrieval
 func (d *DOM) Form(selector string) (*Form, error)
 func (d *DOM) Link(selector string) (*Link, error)
 func (d *DOM) Button(selector string) (*Button, error)
@@ -517,55 +520,54 @@ func (d *DOM) Title() (string, error)
 func (d *DOM) Meta(name string) (string, error)
 func (d *DOM) Img(selector string) (*Img, error)
 
-// フォーム操作（エラーを返す版）
-func (f *Form) Fill(name, value string) (*Form, error)           // テキスト入力
-func (f *Form) CheckCheckbox(name string) (*Form, error)         // チェックボックスを選択
-func (f *Form) UncheckCheckbox(name string) (*Form, error)       // チェックボックスの選択解除
-func (f *Form) Select(name, value string) (*Form, error)         // セレクトボックス選択
-func (f *Form) CheckRadio(name, value string) (*Form, error)     // ラジオボタン選択
-func (f *Form) Submit() (Response, error)                        // 送信
+// Form Operations (Error-returning version)
+func (f *Form) Fill(name, value string) (*Form, error)           // Text input
+func (f *Form) CheckCheckbox(name string) (*Form, error)         // Check checkbox
+func (f *Form) UncheckCheckbox(name string) (*Form, error)       // Uncheck checkbox
+func (f *Form) Select(name, value string) (*Form, error)         // Select option
+func (f *Form) CheckRadio(name, value string) (*Form, error)     // Select radio
+func (f *Form) Submit() (Response, error)                        // Submit
 
-// フォーム操作（メソッドチェーン版 - エラー時はパニック）
-func (f *Form) MustFill(name, value string) *Form                // テキスト入力
-func (f *Form) MustCheckCheckbox(name string) *Form              // チェックボックスを選択
-func (f *Form) MustUncheckCheckbox(name string) *Form            // チェックボックスの選択解除
-func (f *Form) MustSelect(name, value string) *Form              // セレクトボックス選択
-func (f *Form) MustCheckRadio(name, value string) *Form          // ラジオボタン選択
+// Form Operations (Method chaining version - panics on error)
+func (f *Form) MustFill(name, value string) *Form                // Text input
+func (f *Form) MustCheckCheckbox(name string) *Form              // Check checkbox
+func (f *Form) MustUncheckCheckbox(name string) *Form            // Uncheck checkbox
+func (f *Form) MustSelect(name, value string) *Form              // Select option
+func (f *Form) MustCheckRadio(name, value string) *Form          // Select radio
 
-// フォーム情報取得
-func (f *Form) GetValue(name string) (string, error)             // 入力値取得
-func (f *Form) HasField(name string) bool                        // フィールド存在確認
+// Form Information
+func (f *Form) GetValue(name string) (string, error)             // Get value
+func (f *Form) HasField(name string) bool                        // Check field exists
 
-
-// リンク
+// Link
 func (l *Link) Click() (Response, error)
 func (l *Link) GetURL() (*url.URL, error)
 func (l *Link) GetText() (string, error)
 
-// ボタン
+// Button
 func (b *Button) GetText() (string, error)
 
-// テーブル
+// Table
 func (tbl *Table) GetRows() ([][]string, error)
 func (tbl *Table) GetRowCount() int
 func (tbl *Table) GetColCount() int
 
-// リスト
+// List
 func (lst *List) GetItems() ([]string, error)
 func (lst *List) GetItemCount() int
 
-// 画像
+// Image
 func (img *Img) GetSrc() (string, error)
 func (img *Img) GetAlt() (string, error)
 ```
 
-## フレームワーク統合
+## Framework Integrations
 
-メジャーなHTTPサーバーフレームワーク向けのTransport実装を提供しています。
+Transport implementations for major HTTP server frameworks are provided.
 
-### Chi 統合
+### Chi Integration
 
-Chi フレームワークを使用している場合`ChiTransport`を利用して、`httptest.Server`と連携できます。
+When using the Chi framework, you can use `ChiTransport` to work with `httptest.Server`.
 
 ```go
 import (
@@ -600,25 +602,32 @@ func Test_LoginFlow(t *testing.T) {
 }
 ```
 
-### Echo 統合
+### Echo Integration
 
-準備中...
+Coming soon...
 
-### Gin 統合
+### Gin Integration
 
-準備中...
+Coming soon...
 
+### Fiber Integration
 
-### Fiber 統合
+Coming soon...
 
-準備中...
+## Roadmap
 
-## ロードマップ
+* [ ] `multipart/form-data` and file upload support
+* [ ] `<select multiple>` / `<input type=date|time|number>` input helpers
+* [ ] Redirect following (`3xx`) support
+* [ ] Detailed cookie attribute support (expiration, path, domain, Secure, HttpOnly, etc.)
+* [ ] Enhanced `Table`/`List` diff reporting (detailed cell mismatch display)
+* [ ] Rich selector extensions (class, tag, attribute selectors, `:has()`, `:nth-of-type()`, etc.)
+* [ ] Improved error messages with color diff output
 
-* [ ] `multipart/form-data` とファイル添付
-* [ ] `<select multiple>` / `<input type=date|time|number>` の入力補助
-* [ ] リダイレクト追従（`3xx`）のサポート
-* [ ] Cookie の詳細属性サポート（有効期限、パス、ドメイン、Secure、HttpOnly等）
-* [ ] `Table`/`List` の差分レポート強化（どのセルが不一致かを詳細表示）
-* [ ] リッチなセレクタ拡張（クラス、タグ、属性セレクタ、`:has()`, `:nth-of-type()` など）
-* [ ] エラーメッセージの見やすい差分表示（カラー出力）
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
