@@ -213,6 +213,22 @@ func (f *Form) HasField(name string) bool {
 	return field.Length() > 0
 }
 
+// Find finds and returns a generic element within the form matching the selector
+// Supports standard CSS selectors
+func (f *Form) Find(selector string) (*Element, error) {
+	sel := f.selection.Find(selector)
+
+	if sel.Length() == 0 {
+		return nil, fmt.Errorf("element not found in form: %s", selector)
+	}
+
+	if sel.Length() > 1 {
+		return nil, fmt.Errorf("multiple elements found in form for selector: %s (found %d)", selector, sel.Length())
+	}
+
+	return &Element{selection: sel}, nil
+}
+
 // Submit submits the form and returns the response
 func (f *Form) Submit() (Response, error) {
 	// Get form action and method

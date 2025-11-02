@@ -25,6 +25,8 @@
 * [クイックスタート](#クイックスタート)
 * [フォーム操作例](#フォーム操作例)
 * [リンク例](#リンク例)
+* [任意の要素を探す](#任意の要素を探す)
+* [GETリクエストを送信](#getリクエストを送信)
 * [Table / List の確認例](#table--list-の確認例)
 * [連続した操作](#連続した操作)
 * [Cookie の扱い](#cookie-の扱い)
@@ -212,6 +214,73 @@ if res.Status != 200 {
 }
 ```
 
+## 任意の要素を探す
+
+`Find()` を使用して、標準的なCSSセレクタで任意のHTML要素を検索できます：
+
+```go
+// クラスで要素を検索
+errorAlert, err := dom.Find(".alert-danger")
+if err != nil {
+    return err
+}
+
+// 要素のテキストを取得
+errorText := errorAlert.Text()
+
+// 要素の属性を取得
+className := errorAlert.Attr("class")
+dataValue := errorAlert.Attr("data-value")
+
+// 属性が存在するかチェック
+if errorAlert.HasAttr("data-error") {
+    // エラー属性を処理
+}
+
+// HTML内容を取得
+html, err := errorAlert.HTML()
+
+// 要素の型をチェック
+if errorAlert.Is(".alert") {
+    // アラート要素です
+}
+```
+
+フォーム内の要素も検索できます：
+
+```go
+form, _ := dom.Form("#login-form")
+
+// フォーム内の入力フィールドを検索
+emailField, err := form.Find("#email")
+if err != nil {
+    return err
+}
+
+// 属性からフィールドの値を取得
+emailValue := emailField.Attr("value")
+```
+
+## GETリクエストを送信
+
+GETリクエストを直接送信して、新しいDOMを取得できます：
+
+```go
+// 初期DOMを作成
+dom := h.New(transport).Parse(html)
+
+// GETリクエストを送信して新しいDOMを取得
+homePage, err := dom.Get("/home")
+if err != nil {
+    return err
+}
+
+// または MustGet を使用（エラー時にパニック）
+homePage := dom.MustGet("/home")
+
+// Cookieは自動的に引き継がれます
+profilePage := homePage.MustGet("/profile")
+```
 
 ## Table / List の確認例
 
@@ -507,6 +576,8 @@ func NewCookieJar() *CookieJar
 func (d *DOM) Parse(html string) *DOM
 func (d *DOM) SetCookie(name, value string) *DOM
 func (d *DOM) GetCookieJar() *CookieJar
+func (d *DOM) Get(url string) (*DOM, error)                    // GETリクエスト送信
+func (d *DOM) MustGet(url string) *DOM                         // GETリクエスト送信（エラー時パニック）
 
 // 要素取得
 func (d *DOM) Form(selector string) (*Form, error)
@@ -518,6 +589,7 @@ func (d *DOM) Text(selector string) (string, error)
 func (d *DOM) Title() (string, error)
 func (d *DOM) Meta(name string) (string, error)
 func (d *DOM) Img(selector string) (*Img, error)
+func (d *DOM) Find(selector string) (*Element, error)         // 任意の要素を検索
 
 // フォーム操作（エラーを返す版）
 func (f *Form) Fill(name, value string) (*Form, error)           // テキスト入力
@@ -537,7 +609,14 @@ func (f *Form) MustCheckRadio(name, value string) *Form          // ラジオボ
 // フォーム情報取得
 func (f *Form) GetValue(name string) (string, error)             // 入力値取得
 func (f *Form) HasField(name string) bool                        // フィールド存在確認
+func (f *Form) Find(selector string) (*Element, error)           // フォーム内の要素を検索
 
+// 要素
+func (e *Element) Text() string                                  // テキスト内容を取得
+func (e *Element) Attr(name string) string                       // 属性値を取得
+func (e *Element) HasAttr(name string) bool                      // 属性が存在するかチェック
+func (e *Element) HTML() (string, error)                         // 内部HTMLを取得
+func (e *Element) Is(selector string) bool                       // セレクタにマッチするかチェック
 
 // リンク
 func (l *Link) Click() (Response, error)

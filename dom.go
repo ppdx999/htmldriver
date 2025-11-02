@@ -185,3 +185,66 @@ func (d *DOM) Text(selector string) (string, error) {
 	}
 	return strings.TrimSpace(sel.Text()), nil
 }
+
+// Find finds and returns a generic element matching the selector
+// Supports standard CSS selectors
+func (d *DOM) Find(selector string) (*Element, error) {
+	if d.doc == nil {
+		return nil, fmt.Errorf("document not parsed")
+	}
+
+	sel := d.doc.Find(selector)
+
+	if sel.Length() == 0 {
+		return nil, fmt.Errorf("element not found: %s", selector)
+	}
+
+	if sel.Length() > 1 {
+		return nil, fmt.Errorf("multiple elements found for selector: %s (found %d)", selector, sel.Length())
+	}
+
+	return &Element{selection: sel}, nil
+}
+
+// Get makes a GET request to the specified URL and returns a new DOM with the response
+func (d *DOM) Get(urlStr string) (*DOM, error) {
+	targetURL, err := url.Parse(urlStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid URL: %w", err)
+	}
+
+	// Make relative URLs absolute
+	if !targetURL.IsAbs() {
+		targetURL = d.baseURL.ResolveReference(targetURL)
+	}
+
+	// Build GET request
+	req := d.buildRequest(http.MethodGet, targetURL)
+
+	// Send request
+	resp, err := d.transport.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update cookies from response
+	d.updateCookies(resp)
+
+	// Create new DOM with same transport and cookie jar
+	newDOM := &DOM{
+		transport: d.transport,
+		baseURL:   d.baseURL,
+		cookieJar: d.cookieJar,
+	}
+
+	return newDOM.Parse(resp.Body), nil
+}
+
+// MustGet is like Get but panics on error
+func (d *DOM) MustGet(urlStr string) *DOM {
+	dom, err := d.Get(urlStr)
+	if err != nil {
+		panic(err)
+	}
+	return dom
+}

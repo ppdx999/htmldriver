@@ -26,6 +26,8 @@
 * [Quick Start](#quick-start)
 * [Form Operations](#form-operations)
 * [Link Operations](#link-operations)
+* [Finding Arbitrary Elements](#finding-arbitrary-elements)
+* [Making GET Requests](#making-get-requests)
 * [Table / List Verification](#table--list-verification)
 * [Continuous Operations](#continuous-operations)
 * [Cookie Management](#cookie-management)
@@ -215,6 +217,74 @@ if err != nil {
 if res.Status != 200 {
     return fmt.Errorf("expected status 200, got %d", res.Status)
 }
+```
+
+## Finding Arbitrary Elements
+
+You can find any HTML element using standard CSS selectors with `Find()`:
+
+```go
+// Find element by class
+errorAlert, err := dom.Find(".alert-danger")
+if err != nil {
+    return err
+}
+
+// Get element text
+errorText := errorAlert.Text()
+
+// Get element attributes
+className := errorAlert.Attr("class")
+dataValue := errorAlert.Attr("data-value")
+
+// Check if attribute exists
+if errorAlert.HasAttr("data-error") {
+    // Handle error attribute
+}
+
+// Get HTML content
+html, err := errorAlert.HTML()
+
+// Check element type
+if errorAlert.Is(".alert") {
+    // It's an alert
+}
+```
+
+You can also find elements within forms:
+
+```go
+form, _ := dom.Form("#login-form")
+
+// Find input field within form
+emailField, err := form.Find("#email")
+if err != nil {
+    return err
+}
+
+// Get field value from attribute
+emailValue := emailField.Attr("value")
+```
+
+## Making GET Requests
+
+You can make GET requests directly and get a new DOM:
+
+```go
+// Create initial DOM
+dom := h.New(transport).Parse(html)
+
+// Make GET request and get new DOM
+homePage, err := dom.Get("/home")
+if err != nil {
+    return err
+}
+
+// Or use MustGet (panics on error)
+homePage := dom.MustGet("/home")
+
+// Cookies are automatically carried forward
+profilePage := homePage.MustGet("/profile")
 ```
 
 ## Table / List Verification
@@ -508,6 +578,8 @@ func NewCookieJar() *CookieJar
 func (d *DOM) Parse(html string) *DOM
 func (d *DOM) SetCookie(name, value string) *DOM
 func (d *DOM) GetCookieJar() *CookieJar
+func (d *DOM) Get(url string) (*DOM, error)                    // Make GET request
+func (d *DOM) MustGet(url string) *DOM                         // Make GET request (panic on error)
 
 // Element Retrieval
 func (d *DOM) Form(selector string) (*Form, error)
@@ -519,6 +591,7 @@ func (d *DOM) Text(selector string) (string, error)
 func (d *DOM) Title() (string, error)
 func (d *DOM) Meta(name string) (string, error)
 func (d *DOM) Img(selector string) (*Img, error)
+func (d *DOM) Find(selector string) (*Element, error)         // Find arbitrary element
 
 // Form Operations (Error-returning version)
 func (f *Form) Fill(name, value string) (*Form, error)           // Text input
@@ -538,6 +611,14 @@ func (f *Form) MustCheckRadio(name, value string) *Form          // Select radio
 // Form Information
 func (f *Form) GetValue(name string) (string, error)             // Get value
 func (f *Form) HasField(name string) bool                        // Check field exists
+func (f *Form) Find(selector string) (*Element, error)           // Find element in form
+
+// Element
+func (e *Element) Text() string                                  // Get text content
+func (e *Element) Attr(name string) string                       // Get attribute value
+func (e *Element) HasAttr(name string) bool                      // Check if attribute exists
+func (e *Element) HTML() (string, error)                         // Get inner HTML
+func (e *Element) Is(selector string) bool                       // Check if matches selector
 
 // Link
 func (l *Link) Click() (Response, error)
